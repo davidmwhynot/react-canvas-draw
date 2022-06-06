@@ -312,12 +312,12 @@ export default class CanvasDraw extends PureComponent {
     // Attach our wheel event listener here instead of in the render so that we can specify a non-passive listener.
     // This is necessary to prevent the default event action on chrome.
     // https://github.com/facebook/react/issues/14856
-    this.canvas.interface &&
-      this.canvas.interface.addEventListener(
-        "wheel",
-        this.handleWheel,
-        makePassiveEventOption()
-      );
+   //  this.canvas.interface &&
+   //    this.canvas.interface.addEventListener(
+   //      "wheel",
+   //      this.handleWheel,
+   //      makePassiveEventOption()
+   //    );
   }
 
   componentDidUpdate(prevProps) {
@@ -348,8 +348,8 @@ export default class CanvasDraw extends PureComponent {
 
   componentWillUnmount = () => {
     this.canvasObserver.unobserve(this.canvasContainer);
-    this.canvas.interface &&
-      this.canvas.interface.removeEventListener("wheel", this.handleWheel);
+   //  this.canvas.interface &&
+   //    this.canvas.interface.removeEventListener("wheel", this.handleWheel);
   };
 
   render() {
@@ -402,9 +402,9 @@ export default class CanvasDraw extends PureComponent {
 
   ///// Event Handlers
 
-  handleWheel = (e) => {
-    this.interactionSM = this.interactionSM.handleMouseWheel(e, this);
-  };
+//   handleWheel = (e) => {
+//     this.interactionSM = this.interactionSM.handleMouseWheel(e, this);
+//   };
 
   handleDrawStart = (e) => {
     this.interactionSM = this.interactionSM.handleDrawStart(e, this);
