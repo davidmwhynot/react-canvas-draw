@@ -125,7 +125,7 @@ class Demo extends Component {
           This part got me most excited. Very easy to use saving and loading of
           drawings. It even comes with a customizable loading speed to control
           whether your drawing should load instantly (loadTimeOffset = 0) or
-          appear after some time (loadTimeOffset > 0){" "}
+          appear after some time (loadTimeOffset &gt; 0){" "}
           <span>{`<CanvasDraw loadTimeOffset={10} />`}</span>
         </p>
         <p>Try it out! Draw something, hit "Save" and then "Load".</p>
@@ -156,7 +156,9 @@ class Demo extends Component {
           </button>
           <button
             onClick={() => {
-              console.log(this.saveableCanvas.getDataURL());
+              const savedDataURL = this.saveableCanvas.getDataURL();
+              console.log('savedDataURL', savedDataURL);
+              localStorage.setItem('savedDataURL', savedDataURL);
               alert("DataURL written to console")
             }}
           >
@@ -231,6 +233,24 @@ class Demo extends Component {
           hideGrid
           ref={canvasDraw => (this.loadableCanvas = canvasDraw)}
           saveData={localStorage.getItem("savedDrawing")}
+        />
+        <button
+          onClick={() => {
+            this.loadableURLCanvas.loadSaveDataURL(
+              localStorage.getItem("savedDataURL")
+            );
+          }}
+          style={{ fontSize: 40 }}
+        >
+          Load save data URL
+        </button>
+        <CanvasDraw
+          disabled
+          hideGrid
+          ref={canvasDraw => (this.loadableURLCanvas = canvasDraw)}
+          saveDataURL={localStorage.getItem("savedDataURL")}
+          canvasWidth={this.state.width}
+          canvasHeight={this.state.height}
         />
         <p>
           The saving & loading also takes different dimensions into account.

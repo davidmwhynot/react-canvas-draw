@@ -8,7 +8,8 @@ import ResizeObserver from "resize-observer-polyfill";
 import CoordinateSystem, { IDENTITY } from "./coordinateSystem";
 import drawImage from "./drawImage";
 import { DefaultState } from "./interactionStateMachine";
-import makePassiveEventOption from "./makePassiveEventOption";
+import { getBase64Image } from "./getBase64Image";
+// import makePassiveEventOption from "./makePassiveEventOption";
 
 function midPointBtw(p1, p2) {
   return {
@@ -51,6 +52,7 @@ export default class CanvasDraw extends PureComponent {
     disabled: PropTypes.bool,
     imgSrc: PropTypes.string,
     saveData: PropTypes.string,
+    saveDataURL: PropTypes.string,
     immediateLoading: PropTypes.bool,
     hideInterface: PropTypes.bool,
     gridSizeX: PropTypes.number,
@@ -79,6 +81,7 @@ export default class CanvasDraw extends PureComponent {
     disabled: false,
     imgSrc: "",
     saveData: "",
+    saveDataURL: "",
     immediateLoading: false,
     hideInterface: false,
     gridSizeX: 25,
@@ -155,7 +158,21 @@ export default class CanvasDraw extends PureComponent {
   getSaveData = () => {
     // Construct and return the stringified saveData object
     return JSON.stringify({
-      lines: this.lines,
+      lines: this.lines.map(line => {
+        if (line.points.length !== 1) return line;
+
+        const imgPoint = line.points[0];
+
+        if (!imgPoint.isImg) return line;
+
+        return {
+          ...line,
+          points: [{
+            isImg: true,
+            img: getBase64Image(imgPoint.img)
+          }]
+        }
+      }),
       width: this.props.canvasWidth,
       height: this.props.canvasHeight,
     });
@@ -229,13 +246,33 @@ export default class CanvasDraw extends PureComponent {
       throw new Error("saveData needs to be of type string!");
     }
 
-    const { lines, width, height } = JSON.parse(saveData);
+    const { lines: rawLines, width, height } = JSON.parse(saveData);
 
-    if (!lines || typeof lines.push !== "function") {
+    if (!rawLines || typeof rawLines.push !== "function") {
       throw new Error("saveData.lines needs to be an array!");
     }
 
     this.clear();
+
+    const lines = rawLines.map(rawLine => {
+      if (rawLine.points.length !== 1) return rawLine;
+
+      const imgPoint = rawLine.points[0];
+
+      if (!imgPoint.isImg) return rawLine;
+
+      const img = new Image();
+
+      img.src = imgPoint.img;
+
+      return {
+        ...rawLine,
+        points: [{
+          isImg: true,
+          img
+        }]
+      }
+    })
 
     if (
       width === this.props.canvasWidth &&
@@ -263,6 +300,24 @@ export default class CanvasDraw extends PureComponent {
         immediate,
       });
     }
+  };
+
+  loadSaveDataURL = saveDataURL => {
+    if (typeof saveDataURL !== "string") {
+      throw new Error("saveData needs to be of type string!");
+    }
+
+    this.clear();
+
+    const img = new Image();
+
+    img.src = saveDataURL;
+    img.onload = () => {
+      this.simulateDrawingLines({
+        lines: [{ points: [{ isImg: true, img }] }],
+        immediate: true
+      })
+    };
   };
 
   ///// private API ////////////////////////////////////////////////////////////
@@ -301,11 +356,13 @@ export default class CanvasDraw extends PureComponent {
       );
       this.mouseHasMoved = true;
       this.valuesChanged = true;
-      this.clearExceptErasedLines();
+      // this.clearExceptErasedLines();
 
       // Load saveData from prop if it exists
       if (this.props.saveData) {
         this.loadSaveData(this.props.saveData);
+      } else if (this.props.saveDataURL) {
+        this.loadSaveDataURL(this.props.saveDataURL);
       }
     }, 100);
 
@@ -329,6 +386,8 @@ export default class CanvasDraw extends PureComponent {
 
     if (prevProps.saveData !== this.props.saveData) {
       this.loadSaveData(this.props.saveData);
+    } else if (prevProps.saveDataURL !== this.props.saveDataURL) {
+      this.loadSaveDataURL(this.props.saveDataURL);
     }
 
     if (JSON.stringify(prevProps) !== JSON.stringify(this.props)) {
@@ -539,6 +598,16 @@ export default class CanvasDraw extends PureComponent {
   };
 
   drawPoints = ({ points, brushColor, brushRadius }) => {
+    if (points.length === 1) {
+      const imgPoint = points[0];
+
+      if (!imgPoint.isImg) return;
+
+      drawImage({ ctx: this.ctx.temp, img: imgPoint.img });
+
+      return;
+    }
+
     this.ctx.temp.lineJoin = "round";
     this.ctx.temp.lineCap = "round";
     this.ctx.temp.strokeStyle = brushColor;
@@ -568,7 +637,11 @@ export default class CanvasDraw extends PureComponent {
   };
 
   saveLine = ({ brushColor, brushRadius } = {}) => {
-    if (this.points.length < 2) return;
+    if (this.points.length < 2) {
+      if (this.points.length !== 1) return;
+
+      if(!this.points[0].isImg) return;
+    };
 
     // Save as new line
     this.lines.push({
